@@ -42,6 +42,7 @@
 #include "qquickscreen_p.h"
 #include "qquickview_p.h"
 #include <QtQuick/QQuickWindow>
+#include <QtQuick/QQuickRenderControl>
 #include <QtCore/QCoreApplication>
 #include <QtQml/QQmlEngine>
 
@@ -78,11 +79,33 @@ QQuickWindowQmlImpl::QQuickWindowQmlImpl(QWindow *parent)
     connect(this, &QWindow::screenChanged, this, &QQuickWindowQmlImpl::screenChanged);
 }
 
+static inline QWindow *realTransientParent(QQuickWindowQmlImpl *q)
+{
+    if (QQuickWindow *quick = qobject_cast<QQuickWindow *>(q->transientParent())) {
+        QQuickWindowPrivate *d = QQuickWindowPrivate::get(quick);
+        if (d->renderControl)
+            return d->renderControl->renderWindow(nullptr);
+        return quick;
+    }
+
+    return nullptr;
+}
+
+static inline QWindow *invisibleTransientParent(QQuickWindowQmlImpl *q)
+{        
+    if (QWindow *window = realTransientParent(q)) {
+        if (!window->isVisible())
+            return window;
+    }
+
+    return nullptr;
+}
+
 void QQuickWindowQmlImpl::setVisible(bool visible)
 {
     Q_D(QQuickWindowQmlImpl);
     d->visible = visible;
-    if (d->complete && (!transientParent() || transientParent()->isVisible()))
+    if (d->complete && !invisibleTransientParent(this))
         QQuickWindow::setVisible(visible);
 }
 
@@ -129,8 +152,8 @@ void QQuickWindowQmlImpl::componentComplete()
                              << transientParent() << "declared visibility" << d->visibility << "; delaying show";
         connect(itemParent, &QQuickItem::windowChanged, this,
                 &QQuickWindowQmlImpl::setWindowVisibility, Qt::QueuedConnection);
-    } else if (transientParent() && !transientParent()->isVisible()) {
-        connect(transientParent(), &QQuickWindow::visibleChanged, this,
+    } else if (QWindow *transient = invisibleTransientParent(this)) {
+        connect(transient, &QWindow::visibleChanged, this,
                 &QQuickWindowQmlImpl::setWindowVisibility, Qt::QueuedConnection);
     } else {
         setWindowVisibility();
@@ -140,13 +163,13 @@ void QQuickWindowQmlImpl::componentComplete()
 void QQuickWindowQmlImpl::setWindowVisibility()
 {
     Q_D(QQuickWindowQmlImpl);
-    if (transientParent() && !transientParent()->isVisible())
+    if (invisibleTransientParent(this))
         return;
 
     if (QQuickItem *senderItem = qmlobject_cast<QQuickItem *>(sender())) {
         disconnect(senderItem, &QQuickItem::windowChanged, this, &QQuickWindowQmlImpl::setWindowVisibility);
-    } else if (sender()) {
-        disconnect(transientParent(), &QWindow::visibleChanged, this, &QQuickWindowQmlImpl::setWindowVisibility);
+    } else if (QWindow *senderWindow = qmlobject_cast<QWindow *>(sender())) {
+        disconnect(senderWindow, &QWindow::visibleChanged, this, &QQuickWindowQmlImpl::setWindowVisibility);
     }
 
     // We have deferred window creation until we have the full picture of what
