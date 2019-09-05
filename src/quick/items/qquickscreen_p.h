@@ -55,6 +55,7 @@
 #include <QRect>
 #include <QSize>
 #include <private/qqmlglobal_p.h>
+#include <private/qtquickglobal_p.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -64,7 +65,7 @@ class QQuickWindow;
 class QScreen;
 
 
-class Q_AUTOTEST_EXPORT QQuickScreenInfo : public QObject
+class Q_QUICK_PRIVATE_EXPORT QQuickScreenInfo : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString name READ name NOTIFY nameChanged)
@@ -128,7 +129,7 @@ protected:
     QPointer<QScreen> m_screen;
 };
 
-class Q_AUTOTEST_EXPORT QQuickScreenAttached : public QQuickScreenInfo
+class Q_QUICK_PRIVATE_EXPORT QQuickScreenAttached : public QQuickScreenInfo
 {
     Q_OBJECT
     Q_PROPERTY(Qt::ScreenOrientations orientationUpdateMask READ orientationUpdateMask
@@ -158,7 +159,7 @@ private:
     bool m_updateMaskSet;
 };
 
-class Q_AUTOTEST_EXPORT QQuickScreen : public QObject
+class Q_QUICK_PRIVATE_EXPORT QQuickScreen : public QObject
 {
     Q_OBJECT
 public:
