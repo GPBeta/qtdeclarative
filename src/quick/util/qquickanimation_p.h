@@ -173,6 +173,8 @@ public:
     int duration() const;
     void setDuration(int);
 
+    ThreadingModel threadingModel() const override { return AnyThread; }
+
 Q_SIGNALS:
     void durationChanged(int);
 
